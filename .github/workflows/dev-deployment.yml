@@ -3,47 +3,29 @@ name: Dev Deployment
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          node-version: '20'
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm install
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:dev .
 
-      - name: Run unit tests
-        run: npm test
+      - name: Push Docker Image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/myapp:dev
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build Docker image
-        run: docker build -t anmol12356/dev-app:latest .
-
-      - name: Push Docker image
-        run: docker push anmol12356/dev-app:latest
-
-      - name: Deploy to DEV server
-        uses: appleboy/ssh-action@v0.1.6
-        with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          script: |
-            docker pull anmol12356/dev-app:latest
-            docker stop dev-app || true
-            docker rm dev-app || true
-            docker run -d --name dev-app -p 3000:3000 anmol12356/dev-app:latest
+      - name: Deployment Message
+        run: echo "Deployed to Development using value $DEV_ENV"
+        env:
+          DEV_ENV: ${{ secrets.DEV_ENV }}
